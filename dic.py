@@ -1,18 +1,28 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import sys
+reload(sys)
+sys.setdefaultencoding("utf8")
+
 import requests
 from bs4 import BeautifulSoup
 
 
 def main():
-    word = 'python'
+    word = 'pythoo'
     result = look_up(word)
     show2screen(result)
 
 
 def show2screen(result):
-    pass
+    if result['errinfo'] != '':
+        print u'您要找的是不是: ' + result['errinfo']
+
+    print '%(title)s  %(pronounce)s' % result['wordbook']
+    for wt in result['wordbook']['content']:
+        print '%s' % wt
+
 
 def look_up(word):
     soup = get_soup(word)
@@ -42,11 +52,10 @@ def get_soup(word):
 def get_errinfo(soup):
     result = ''
     # 判断是否错误
-    err_wrapper = soup.find(id='error-wrapper')
+    err_wrapper = soup.find(class_='typo-rel')
     if err_wrapper is not None:
-        title = err_wrapper.find(class_='error-typo').find(class_='typo-rel')
-        word = title.find(class_='title').get_text().strip()
-        content = title.contents[-1].strip()
+        word = err_wrapper.find(class_='title').get_text().strip()
+        content = err_wrapper.contents[-1].strip()
         result = '%s %s' % (word, content)
 
     return result
@@ -60,7 +69,11 @@ def get_phrs(soup):
         title = phrs_list.find('h2', class_='wordbook-js')
         result['title'] = title.find(class_='keyword').get_text().strip()
         result['pronounce'] = title.find(class_='phonetic').get_text().strip()
-        for wt in phrs_list.find(class_='trans-container').find('ul').find_all('li'):
+        content = phrs_list.find(class_='trans-container').find('ul')
+        ct_li = content.find_all('li')
+        ct_p = content.find_all('p', class_='wordGroup')
+        ct_list = ct_li if len(ct_li) != 0 else ct_p
+        for wt in ct_list:
             result['content'].append(wt.get_text().strip())
 
     return result
@@ -112,7 +125,7 @@ def get_ebaike(soup):
     # 百科
     ebaike = soup.find(id='eBaike')
     if ebaike is not None:
-        result = ebaike.find(id='bk').find(class_='contnet').find('p').get_text().strip()
+        result = ebaike.find(id='bk').find(class_='content').find('p').get_text().strip()
 
     return result
 
