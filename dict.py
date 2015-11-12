@@ -65,7 +65,7 @@ class Dictionary():
                             t = k.get_text().replace('\n', '').strip()
                             if t != '':
                                 s.append(t)
-                        result['content'].append(' '.join(s))
+                        result['content'].append(' '.join(s).replace('; ;', ';'))
 
             except:
                 pass
