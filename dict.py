@@ -13,21 +13,24 @@ class Dictionary():
 
     def lookup(self, word):
         self.init_soup(word)
-
-        result = {}
-        result['errinfo'] = self.get_errinfo()
-        result['wordbook'] = self.get_phrs()
-        result.update(self.get_webtrans())
-        result['synonyms'] = self.get_synonyms()
-        result['ebaike'] = self.get_ebaike()
-
+        result = {
+            'errinfo': self.get_errinfo(),
+            'wordbook': self.get_phrs(),
+            'web_trans': self.get_webtrans(),
+            'web_phrase': self.get_webphrase(),
+            'word_group': self.get_wordgroup(),
+            'synonyms': self.get_synonyms(),
+            'relword': self.get_relword(),
+            'discriminate': self.get_discriminate(),
+            'ebaike': self.get_ebaike(),
+        }
         return result
 
     def init_soup(self, word):
         """ 初始化，抓取数据 """
         url = "http://dict.youdao.com/search?q="
         r = requests.get(url+word)
-        self.soup = BeautifulSoup(r.text, 'html.parser')
+        self.soup = BeautifulSoup(r.text, 'html5lib')
 
     def get_errinfo(self):
         """ 是否拼写错误 """
@@ -73,42 +76,67 @@ class Dictionary():
         return result
 
     def get_webtrans(self):
-        """ 网络释义，网络短语 """
-        result = {'web_trans': [], 'web_phrase': []}
+        """ 网络释义 """
+        result = []
         web_trans = self.soup.find(id='tWebTrans')
         if web_trans is not None:
-            # 网络释义
             for wt in web_trans.find_all(class_='wt-container'):
                 w = {
                     'title': wt.find(class_="title").find('span').string.strip(),
                     'content': wt.find(class_="collapse-content").get_text().replace('\n', '').strip(),
                 }
-                result['web_trans'].append(w)
+                result.append(w)
 
-            # 网络短语
-            for wg in web_trans.find(id='webPhrase').find_all(class_="wordGroup"):
+        return result
+
+    def get_webphrase(self):
+        """ 网络短语 """
+        result = []
+        web_phrase = self.soup.find(id='webPhrase')
+        if web_phrase is not None:
+            for wg in web_phrase.find_all(class_="wordGroup"):
                 w = {
                     'title': wg.find('span').get_text().strip(),
                     'content': '; '.join([s.strip() for s in wg.contents[-1].strip().split(';')]),
                 }
-                result['web_phrase'].append(w)
+                result.append(w)
 
         return result
 
     def get_synonyms(self):
         """ 同义词 """
         result = []
-        synonyms = self.soup.find(id='eTransform')
+        synonyms = self.soup.find(id='synonyms')
         if synonyms is not None:
-            synonyms = synonyms.find(id='synonyms')
-            if synonyms is not None:
-                for s in synonyms.find('ul').find_all('li'):
-                    cts = s.next_sibling.next_sibling.find_all(class_='contentTitle')
-                    w = {
-                        'title': s.get_text().strip(),
-                        'content': ', '.join([k.get_text().replace('\n', '').replace(',', '').strip() for k in cts]),
-                    }
-                    result.append(w)
+            for s in synonyms.find_all('li'):
+                cts = s.next_sibling.next_sibling.find_all(class_='contentTitle')
+                w = {
+                    'title': s.get_text().strip(),
+                    'content': ', '.join([k.get_text().replace('\n', '').replace(',', '').strip() for k in cts]),
+                }
+                result.append(w)
+
+        return result
+
+    def get_wordgroup(self):
+        """ 词组短语 """
+        return self.get_loop('wordGroup')
+
+    def get_relword(self):
+        """ 同根词 """
+        return self.get_loop('relWordTab')
+
+    def get_discriminate(self):
+        """ 词语辨析 """
+        result = []
+        discri = self.soup.find(id='discriminate')
+        if discri is not None:
+            for wg in discri.find_all(class_='wordGroup'):
+                w = {
+                    'title': wg.find('span').get_text().strip(),
+                    'content': wg.find('p').contents[-1].strip(),
+                }
+                result.append(w)
 
         return result
 
@@ -118,6 +146,19 @@ class Dictionary():
         ebaike = self.soup.find(id='eBaike')
         if ebaike is not None:
             result = ebaike.find(id='bk').find(class_='content').find('p').get_text().strip()
+
+        return result
+
+    def get_loop(self, idname):
+        result = []
+        info = self.soup.find(id=idname)
+        if info is not None:
+            for wg in info.find_all(class_='wordGroup'):
+                w = {
+                    'title': wg.find('span').get_text().strip(),
+                    'content': wg.contents[-1].strip(),
+                }
+                result.append(w)
 
         return result
 
@@ -135,12 +176,12 @@ class Printer():
         for wt in result['wordbook']['content']:
             print '%s' % wt
 
-        # 网络释义
         self._print_list(result, 'web_trans', u'网络释义')
-        # 网络短语
         self._print_list(result, 'web_phrase', u'网络短语')
-        # 同义词
         self._print_list(result, 'synonyms', u'同近义词')
+        self._print_list(result, 'word_group', u'词组短语')
+        self._print_list(result, 'relword', u'同根词')
+        self._print_list(result, 'discriminate', u'词语辨析')
 
         # 百科
         if result['ebaike'] != '':
@@ -157,7 +198,7 @@ Usage:
         if len(result[key]) != 0:
             self._print_title(title)
             for wt in result[key]:
-                print '\033[1;37;40m%(title)s: \033[0m%(content)s' % wt
+                print '\033[1;37;40m%(title)s:\033[0m %(content)s' % wt
 
     def _print_title(self, title):
         print '\n\033[1;31;40m%s\033[0m' % title
