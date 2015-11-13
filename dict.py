@@ -19,6 +19,7 @@ class Dictionary():
     def lookup(self, word):
         self.init_soup(word)
         result = {
+            'noresult': self.get_noresult(),
             'errinfo': self.get_errinfo(),
             'wordbook': self.get_phrs(),
             'web_trans': self.get_webtrans(),
@@ -36,6 +37,20 @@ class Dictionary():
         url = "http://dict.youdao.com/search?q="
         r = requests.get(url+word)
         self.soup = BeautifulSoup(r.text, 'html5lib')
+
+    def get_noresult(self):
+        """ 没有结果 """
+        result = ''
+        err_wrapper = self.soup.find(class_='error-note')
+        if err_wrapper is not None:
+            try:
+                dt = err_wrapper.find('dt').get_text().strip()
+                dd = err_wrapper.find('dd').get_text().strip()
+                result = '%s\n%s' % (dt, dd)
+            except:
+                pass
+
+        return result
 
     def get_errinfo(self):
         """ 是否拼写错误 """
@@ -172,15 +187,15 @@ class Printer():
     """ 显示类 """
 
     def show(self, result):
+        # 找不到结果
+        if result['noresult'] != '':
+            print '\033[0;31;40m%s\033[0m\n' % result['noresult']
+
         # 错误信息
         if result['errinfo'] != '':
-            print u'您要找的是不是: \033[1;35;40m%s\033[0m\n\n' % result['errinfo']
+            print u'您要找的是不是: \033[1;35;40m%s\033[0m\n' % result['errinfo']
 
-        # 基本释义
-        print '\033[1;32;40m%(title)s\033[0m  \033[0;33;40m%(pronounce)s\033[0m' % result['wordbook']
-        for wt in result['wordbook']['content']:
-            print '%s' % wt
-
+        self._print_wordbook(result['wordbook'])
         self._print_list(result, 'web_trans', u'网络释义')
         self._print_list(result, 'web_phrase', u'网络短语')
         self._print_list(result, 'synonyms', u'同近义词')
@@ -197,16 +212,28 @@ class Printer():
         print '''
 YouDao Dictionary v0.0.1
 Usage:
-    python dict.py word
-    '''
+    python dict.py word'''
     def _print_list(self, result, key, title):
         if len(result[key]) != 0:
             self._print_title(title)
             for wt in result[key]:
                 print '\033[1;37;40m%(title)s:\033[0m %(content)s' % wt
 
+            print ''
+
     def _print_title(self, title):
-        print '\n\033[1;31;40m%s\033[0m' % title
+        print '\033[1;31;40m%s\033[0m' % title
+
+    def _print_wordbook(self, wordbook):
+        """ 基本释义 """
+        if wordbook['title'] != '':
+            print '\033[1;32;40m%(title)s\033[0m  \033[0;33;40m%(pronounce)s\033[0m' % wordbook
+
+        if len(wordbook['content']) != 0:
+            for wt in wordbook['content']:
+                print '%s' % wt
+
+            print ''
 
 
 def main():
