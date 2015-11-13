@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+#
+# @author   jiehua233@gmail.com
+# @website  http://chenjiehua.me
+# @date     2015-11-12
+#
 
 import sys
 reload(sys)
