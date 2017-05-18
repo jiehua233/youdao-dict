@@ -7,11 +7,12 @@
 #
 
 import sys
+import requests
+from bs4 import BeautifulSoup
+
 reload(sys)
 sys.setdefaultencoding("utf8")
 
-import requests
-from bs4 import BeautifulSoup
 
 class Dictionary():
     """ 字典类 """
@@ -65,7 +66,7 @@ class Dictionary():
 
     def get_phrs(self):
         """ 基本释义 """
-        result = {'title': '', 'pronounce': '', 'content':[]}
+        result = {'title': '', 'pronounce': '', 'content': []}
         phrs_list = self.soup.find(id='phrsListTab')
         if phrs_list is not None:
             title = phrs_list.find('h2', class_='wordbook-js')
@@ -102,7 +103,7 @@ class Dictionary():
         if web_trans is not None:
             for wt in web_trans.find_all(class_='wt-container'):
                 w = {
-                    'title': wt.find(class_="title").find('span').string.strip(),
+                    'title': wt.find(class_="title").find('span').get_text().replace('\n', '').strip(),
                     'content': wt.find(class_="collapse-content").get_text().replace('\n', '').strip(),
                 }
                 result.append(w)
@@ -213,6 +214,7 @@ class Printer():
 YouDao Dictionary v0.0.1
 Usage:
     python dict.py word'''
+
     def _print_list(self, result, key, title):
         if len(result[key]) != 0:
             self._print_title(title)
@@ -250,4 +252,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
